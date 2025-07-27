@@ -240,6 +240,7 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         else:
             self.G = self.EM_solver.get_TM_Gba(self.des_mask, self.des_mask)
             if self.chi_background is None:
+                warnings.warn("self.G for sparseQCQP=False is vacuum Green's function and ignores self.chi_background for now. Will fix in later patch.")
                 self.M = self.EM_solver.M0
             else:
                 self.M = self.EM_solver.M0 + self.EM_solver._get_diagM_from_chigrid(self.chi_background)
