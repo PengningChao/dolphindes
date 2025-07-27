@@ -8,6 +8,7 @@ __all__ = []
 
 import numpy as np
 import scipy.sparse as sp
+import scipy.sparse.linalg as spla
 from dolphindes.cvxopt import SparseSharedProjQCQP, DenseSharedProjQCQP
 from dolphindes.maxwell import TM_FDFD
 from dolphindes.util import check_attributes
@@ -114,7 +115,7 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         self.dl = dl
         self.des_mask = des_mask
         self.Ginv = None
-        self.G = None 
+        self.G = None
         self.M = None
 
         super().__init__(omega, chi, Nx, Ny, Npmlx, Npmly, dl, dl,
@@ -129,6 +130,14 @@ class Photonics_TM_FDFD(Photonics_FDFD):
             
         except AttributeError as e:
             warnings.warn("Photonics_TM_FDFD initialized with missing attributes (lazy initialization). We strongly recommend passing all arguments for expected behavior.")
+
+        ## adjoint support
+        self.adjoint_iter_num = 0
+        if sparseQCQP:
+            self.structure_objective = self.structure_objective_sparse
+        else:
+            self.structure_objective = self.structure_objective_dense
+
 
     def __repr__(self):
         return (f"Photonics_TM_FDFD(omega={self.omega}, chi={self.chi}, Nx={self.Nx}, "
@@ -230,8 +239,13 @@ class Photonics_TM_FDFD(Photonics_FDFD):
             self.Ginv, self.M = self.EM_solver.get_GaaInv(self.des_mask, self.chi_background)
         else:
             self.G = self.EM_solver.get_TM_Gba(self.des_mask, self.des_mask)
+            if self.chi_background is None:
+                self.M = self.EM_solver.M0
+            else:
+                self.M = self.EM_solver.M0 + self.EM_solver._get_diagM_from_chigrid(self.chi_background)
+
     
-    def get_ei(self, ji = None, update=False):
+    def get_ei(self, ji : np.ndarray = None, update=False):
         """
         Get or compute the incident electromagnetic field.
         
@@ -251,11 +265,11 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         if self.ei is None:
             ei = self.EM_solver.get_TM_field(ji, self.chi_background) if self.ji is None else self.EM_solver.get_TM_field(self.ji, self.chi_background)
         else:
-            ei = self.ei        
+            ei = self.ei
         if update: self.ei = ei
         return ei
     
-    def set_ei(self, ei):
+    def set_ei(self, ei : np.ndarray):
         """
         Set the incident electromagnetic field.
         
@@ -384,6 +398,78 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         
         Etotal = self.get_ei()[self.des_mask] + Es
         return P / Etotal
+    
+    def structure_objective_sparse(self, dof : np.ndarray, grad : np.ndarray, verbose : int = 0):
+        """
+        Structural optimization objective and gradient for the specified problem when sparseQCQP=True.
+        Follows convention of the optimization package NLOPT: returns objective value
+        and stores gradient with respect to objective in the input argument grad.
+        
+        Parameters
+        ----------
+        dof : np.ndarray
+        Pixel-wise structure degrees of freedom over the design region as specified by self.des_mask. 
+        dof[j] is a linear interpolation between dof[j] = 0 (self.chi_background) and dof[j] = 1 (self.chi_background + self.chi)
+        
+        grad : np.ndarray
+        Adjoint gradient of the design objective with respect to dof. 
+        Specify grad = [] if only the objective is needed. 
+        Otherwise, grad should be an array of the same size as dof; upon method exit grad will store the gradient.
+        
+        Returns
+        -------
+        obj : float
+        The design objective for the structure specified by dof.
+        """
+        
+        chigrid_dof = np.zeros((self.Nx,self.Ny), dtype=complex)
+        chigrid_dof[self.des_mask] = dof * self.chi
+        M_dof = self.M + self.EM_solver._get_diagM_from_chigrid(chigrid_dof)
+
+        es = spla.spsolve(M_dof, self.omega**2 * (chigrid_dof*self.ei).flatten())[self.des_mask.flatten()]
+        
+        obj = np.real(-np.vdot(es, self.A0@es) + 2*np.vdot(self.s0,es) + self.c0)
+        
+        self.adjoint_iter_num += 1
+        if verbose > 0:
+            print(f'at iteration #{self.adjoint_iter_num}, the objective value is {obj}')
+        
+        if len(grad)>0:
+            adj_src = np.zeros((self.Nx,self.Ny), dtype=complex)
+            adj_src[self.des_mask] = np.conj(self.s0 - self.A0 @ es)
+            adj_v = spla.spsolve(M_dof, adj_src.flatten())[self.des_mask.flatten()]
+            grad[:] = 2*np.real(self.omega**2 * self.chi * (adj_v * (self.ei[self.des_mask]+es)))
+        
+        return obj
+    
+    def structure_objective_dense(self, dof, grad, verbose=0):
+        """
+        Structural optimization objective and gradient for the specified problem when sparseQCQP=False.
+        Specifications exactly the same as structure_objective_sparse.
+        """
+        
+        chigrid_dof = np.zeros((self.Nx,self.Ny), dtype=complex)
+        chigrid_dof[self.des_mask] = dof * self.chi
+        M_dof = self.M + self.EM_solver._get_diagM_from_chigrid(chigrid_dof)
+        es = spla.spsolve(M_dof, self.omega**2 * (chigrid_dof*self.ei).flatten())[self.des_mask.flatten()]
+        
+        et = self.ei[self.des_mask] + es
+        p = chigrid_dof[self.des_mask] * et
+        
+        obj = np.real(-np.vdot(p, self.A0@p) + 2*np.vdot(self.s0,p) + self.c0)
+        
+        self.adjoint_iter_num += 1
+        if verbose > 0:
+            print(f'at iteration #{self.adjoint_iter_num}, the objective value is {obj}')
+        
+        if len(grad)>0:
+            adj_src = np.zeros((self.Nx,self.Ny), dtype=complex)
+            adj_src[self.des_mask] = chigrid_dof[self.des_mask] * np.conj(self.s0 - self.A0 @ p)
+            adj_v = spla.spsolve(M_dof, adj_src.flatten())[self.des_mask.flatten()]
+            grad[:] = 2*np.real((self.chi*np.conj(self.s0 - self.A0 @ p) + self.omega**2*self.chi*adj_v) * et)
+        
+        return obj
+
 
 class Photonics_TE_Yee_FDFD(Photonics_FDFD):
     def __init__(self):
@@ -401,7 +487,7 @@ def chi_to_feasible_rho(chi_inf, chi_design):
     ----------
     chi_inf : np.ndarray
         Inferred chi from Verlan optimization.
-    design_chi : complex
+    chi_design : complex
         The design susceptibility of the problem.
     """
     rho = np.real(chi_inf.conj() * chi_design) / np.abs(chi_design)**2
