@@ -238,13 +238,13 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         if self.sparseQCQP:
             self.Ginv, self.M = self.EM_solver.get_GaaInv(self.des_mask, self.chi_background)
         else:
-            self.G = self.EM_solver.get_TM_Gba(self.des_mask, self.des_mask)
             if self.chi_background is None:
-                warnings.warn("self.G for sparseQCQP=False is vacuum Green's function and ignores self.chi_background for now. Will fix in later patch.")
                 self.M = self.EM_solver.M0
+                self.G = self.EM_solver.get_TM_Gba(self.des_mask, self.des_mask)
             else:
                 self.M = self.EM_solver.M0 + self.EM_solver._get_diagM_from_chigrid(self.chi_background)
-
+                Id = np.diag(self.des_mask.astype(complex).flatten())[:,self.des_mask.flatten()]
+                self.G = self.omega**2 * np.linalg.solve(self.M.toarray(), Id)[self.des_mask.flatten(),:]
     
     def get_ei(self, ji : np.ndarray = None, update=False):
         """
