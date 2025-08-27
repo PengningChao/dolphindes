@@ -399,6 +399,17 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         Etotal = self.get_ei()[self.des_mask] + Es
         return P / Etotal
     
+    def _get_dof_chigrid_M_es(self, dof : np.ndarray):
+        """
+        setup method for structure_objective_sparse and structure_objective_dense
+        """
+        chigrid_dof = np.zeros((self.Nx,self.Ny), dtype=complex)
+        chigrid_dof[self.des_mask] = dof * self.chi
+        M_dof = self.M + self.EM_solver._get_diagM_from_chigrid(chigrid_dof)
+        es = spla.spsolve(M_dof, self.omega**2 * (chigrid_dof*self.ei).flatten())[self.des_mask.flatten()]
+        
+        return chigrid_dof, M_dof, es
+    
     def structure_objective_sparse(self, dof : np.ndarray, grad : np.ndarray):
         """
         Structural optimization objective and gradient for the specified problem when sparseQCQP=True.
@@ -422,12 +433,7 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         The design objective for the structure specified by dof.
         """
         
-        chigrid_dof = np.zeros((self.Nx,self.Ny), dtype=complex)
-        chigrid_dof[self.des_mask] = dof * self.chi
-        M_dof = self.M + self.EM_solver._get_diagM_from_chigrid(chigrid_dof)
-
-        es = spla.spsolve(M_dof, self.omega**2 * (chigrid_dof*self.ei).flatten())[self.des_mask.flatten()]
-        
+        chigrid_dof, M_dof, es = self._get_dof_chigrid_M_es(dof)
         obj = np.real(-np.vdot(es, self.A0@es) + 2*np.vdot(self.s0,es) + self.c0)
         
         if len(grad)>0:
@@ -444,10 +450,7 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         Specifications exactly the same as structure_objective_sparse.
         """
         
-        chigrid_dof = np.zeros((self.Nx,self.Ny), dtype=complex)
-        chigrid_dof[self.des_mask] = dof * self.chi
-        M_dof = self.M + self.EM_solver._get_diagM_from_chigrid(chigrid_dof)
-        es = spla.spsolve(M_dof, self.omega**2 * (chigrid_dof*self.ei).flatten())[self.des_mask.flatten()]
+        chigrid_dof, M_dof, es = self._get_dof_chigrid_M_es(dof)
         
         et = self.ei[self.des_mask] + es
         p = chigrid_dof[self.des_mask] * et
