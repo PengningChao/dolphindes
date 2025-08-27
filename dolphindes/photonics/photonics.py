@@ -131,8 +131,7 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         except AttributeError as e:
             warnings.warn("Photonics_TM_FDFD initialized with missing attributes (lazy initialization). We strongly recommend passing all arguments for expected behavior.")
 
-        ## adjoint support
-        self.adjoint_iter_num = 0
+        ## structure adjoint
         if sparseQCQP:
             self.structure_objective = self.structure_objective_sparse
         else:
@@ -400,7 +399,7 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         Etotal = self.get_ei()[self.des_mask] + Es
         return P / Etotal
     
-    def structure_objective_sparse(self, dof : np.ndarray, grad : np.ndarray, verbose : int = 0):
+    def structure_objective_sparse(self, dof : np.ndarray, grad : np.ndarray):
         """
         Structural optimization objective and gradient for the specified problem when sparseQCQP=True.
         Follows convention of the optimization package NLOPT: returns objective value
@@ -431,10 +430,6 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         
         obj = np.real(-np.vdot(es, self.A0@es) + 2*np.vdot(self.s0,es) + self.c0)
         
-        self.adjoint_iter_num += 1
-        if verbose > 0:
-            print(f'at iteration #{self.adjoint_iter_num}, the objective value is {obj}')
-        
         if len(grad)>0:
             adj_src = np.zeros((self.Nx,self.Ny), dtype=complex)
             adj_src[self.des_mask] = np.conj(self.s0 - self.A0 @ es)
@@ -443,7 +438,7 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         
         return obj
     
-    def structure_objective_dense(self, dof, grad, verbose=0):
+    def structure_objective_dense(self, dof, grad):
         """
         Structural optimization objective and gradient for the specified problem when sparseQCQP=False.
         Specifications exactly the same as structure_objective_sparse.
@@ -458,10 +453,6 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         p = chigrid_dof[self.des_mask] * et
         
         obj = np.real(-np.vdot(p, self.A0@p) + 2*np.vdot(self.s0,p) + self.c0)
-        
-        self.adjoint_iter_num += 1
-        if verbose > 0:
-            print(f'at iteration #{self.adjoint_iter_num}, the objective value is {obj}')
         
         if len(grad)>0:
             adj_src = np.zeros((self.Nx,self.Ny), dtype=complex)
