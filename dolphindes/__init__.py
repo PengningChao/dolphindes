@@ -1,6 +1,5 @@
 """
-DolphinDes
-==========
+DolphinDes.
 
 Provides
   1. An interface to relax Quadratically Constrained Quadratic Programs with constraints
@@ -14,15 +13,13 @@ Provides
 Available subpackages
 ---------------------
 cvxopt
-    Optimization problems and routines 
+    Optimization problems and routines
 photonics
     Photonic dual optimization interface
-maxwell 
+maxwell
     Maxwell solver
-
 """
 
 __version__ = "0.1.0"
 
-__all__ = ['photonics', 'cvxopt', 'maxwell', 'util', '__version__']
-
+__all__ = ["photonics", "cvxopt", "maxwell", "util", "__version__"]

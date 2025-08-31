@@ -1,7 +1,9 @@
 """
 useful mathematical operations
 """
+
 import numpy as np
+
 
 def Sym(A):
     """
@@ -16,7 +18,7 @@ def CRdot(v1: np.ndarray, v2: np.ndarray):
     Computes the inner product of two complex vectors over a real field.
     In other words, the vectors have complex numbers but linear combination coefficients have to be real.
     This is the vector space for the complex QCQP constraints since Lagrangian multipliers are real.
-    
+
     Parameters
     ----------
     v1 : np.ndarray
@@ -28,4 +30,4 @@ def CRdot(v1: np.ndarray, v2: np.ndarray):
     -------
     The inner product
     """
-    return np.real(np.vdot(v1,v2))
+    return np.real(np.vdot(v1, v2))
