@@ -18,8 +18,11 @@ photonics
     Photonic dual optimization interface
 maxwell
     Maxwell solver
+util
+    Utilities
 """
 
 __version__ = "0.1.0"
 
-__all__ = ["photonics", "cvxopt", "maxwell", "util", "__version__"]
+__all__ = ["photonics", "cvxopt", "maxwell", "util", 
+           "__version__", "ComplexGrid", "ComplexArray", "BoolGrid", "SparseDense"]
