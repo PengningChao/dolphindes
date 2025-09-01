@@ -24,5 +24,4 @@ util
 
 __version__ = "0.1.0"
 
-__all__ = ["photonics", "cvxopt", "maxwell", "util", 
-           "__version__", "ComplexGrid", "ComplexArray", "BoolGrid", "SparseDense"]
+__all__ = ["photonics", "cvxopt", "maxwell", "util", "__version__"]
