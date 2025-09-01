@@ -1,7 +1,11 @@
+"""Utility functions and classes for dolphindes.
+
+This package provides various utility functions including class utilities,
+mathematical operations, and geometry utilities.
+"""
+
+from . import geometry_utils
 from .class_utils import check_attributes
 from .math_utils import CRdot, Sym
 
-class geometry_utils:
-    from .geometry_utils import embed_vector
-
-__all__ = ['check_attributes', 'CRdot', 'Sym', 'geometry_utils']
+__all__ = ["check_attributes", "CRdot", "Sym", "geometry_utils"]
