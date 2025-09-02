@@ -5,7 +5,7 @@ __all__ = ["BFGS", "Alt_Newton_GD"]
 from typing import Any, Callable, Tuple, cast
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
 
 from dolphindes.types import FloatNDArray
 
@@ -17,31 +17,42 @@ class _Optimizer:
     algorithms. It manages optimization parameters, tracks optimization results, and
     defines the interface for optimization algorithms.
 
-    Arguments
-    ---------
-        optfunc: Callable function to be optimized.
-        valid_func: Callable function that checks if a solution is valid.
-        penalty_vector_func: Callable function that returns penalty vectors.
-        is_convex: bool
-            Boolean indicating if the optimization problem is convex.
-        opt_params: Dictionary containing optimization parameters. These parameters
-            override the default parameters defined in OPT_PARAMS_DEFAULTS
+    Parameters
+    ----------
+    optfunc : Callable
+        Function to be optimized. Returns a tuple (f(x), grad_f(x), hess_f(x), aux_data)
+        which may contain zeroes if the method does not need them.
+    feasible_func : Callable[[FloatNDArray], bool]
+        Function that checks if a solution is feasible.
+    penalty_vector_func : Callable[[FloatNDArray], Tuple[FloatNDArray, Any]]
+        Function that returns penalty vectors.
+    is_convex : bool
+        Boolean indicating if the optimization problem is convex.
+    opt_params : dict[str, Any]
+        Dictionary containing optimization parameters. These parameters
+        override the default parameters defined in OPT_PARAMS_DEFAULTS.
 
     Attributes
     ----------
-        optfunc: The optimization objective function, returns a tuple (f(x), grad_f(x), 
-                 hess_f(x)), which may contain zeroes if the method does not need them
-        feasible_func: Function to check if a solution is feasible
-        penalty_vector_func: Function to compute penalty vectors given a point x
-        opt_params: Dictionary of optimization parameters.
-        last_opt_x: The last optimized parameter vector.
-        last_opt_fx: The function value at the last optimized point.
+    optfunc : Callable
+        The optimization objective function, returns a tuple (f(x), grad_f(x), 
+        hess_f(x), aux_data), which may contain zeroes if the method does not need them.
+    feasible_func : Callable[[FloatNDArray], bool]
+        Function to check if a solution is feasible.
+    penalty_vector_func : Callable[[FloatNDArray], Tuple[FloatNDArray, Any]]
+        Function to compute penalty vectors given a point x.
+    opt_params : dict[str, Any]
+        Dictionary of optimization parameters.
+    last_opt_x : FloatNDArray | None
+        The last optimized parameter vector.
+    last_opt_fx : float | None
+        The function value at the last optimized point.
 
     Notes
     -----
-        Subclasses must implement the `run` method to define the specific
-        optimization algorithm. Use the `get_last_opt` method to retrieve
-        the results of the most recent optimization.
+    Subclasses must implement the `run` method to define the specific
+    optimization algorithm. Use the `get_last_opt` method to retrieve
+    the results of the most recent optimization.
     """
 
     OPT_PARAMS_DEFAULTS = {
@@ -174,22 +185,25 @@ class _Optimizer:
     def run(
         self, 
         x0: ArrayLike
-    ) -> Tuple[FloatNDArray, float, NDArray[np.float64], FloatNDArray | None]:
+    ) -> Tuple[FloatNDArray, float, FloatNDArray, FloatNDArray | None]:
         """Run the optimization routine with initial point x0.
 
-        Arguments
-        ---------
-            x0: ArrayLike
-                Initial point for optimization
+        Parameters
+        ----------
+        x0 : ArrayLike
+            Initial point for optimization.
 
         Returns
         -------
-            x_opt: RealArray
-                Optimal point found by the optimizer
-            x_grad: RealArray
-                Gradient of the objective function at the optimal point
-            f_opt: float
-                Function value at the optimal point
+        x_opt : FloatNDArray
+            Optimal point found by the optimizer.
+        f_opt : float
+            Function value at the optimal point.
+        grad_opt : FloatNDArray
+            Gradient of the objective function at the optimal point.
+        hess_opt : FloatNDArray | None
+            Hessian of the objective function at the optimal point, or None if not 
+            computed.
         """
         raise NotImplementedError("Optimizer.run() must be implemented in subclasses")
 
@@ -377,8 +391,25 @@ class BFGS(_Optimizer):
     def run(
         self, 
         x0: ArrayLike, 
-    ) -> Tuple[FloatNDArray, float, NDArray[np.float64], None | FloatNDArray]:
-        """See _Optimizer.run. Implements BFGS quasi-Newton iterations."""
+    ) -> Tuple[FloatNDArray, float, FloatNDArray, None]:
+        """Run BFGS optimization routine with initial point x0.
+        
+        Parameters
+        ----------
+        x0 : ArrayLike
+            Initial point for optimization.
+
+        Returns
+        -------
+        x_opt : FloatNDArray
+            Optimal point found by the optimizer.
+        f_opt : float
+            Function value at the optimal point.
+        grad_opt : FloatNDArray
+            Gradient of the objective function at the optimal point.
+        hess_opt : None
+            BFGS does not return the Hessian, always None.
+        """
         x0 = np.asarray(x0, dtype=np.float64)
         self.opt_x = x0.copy()
         assert isinstance(self.opt_x, np.ndarray), "opt_x must be a numpy ndarray"
@@ -586,8 +617,25 @@ class Alt_Newton_GD(_Optimizer):
 
     def run(
         self, x0: ArrayLike
-    ) -> Tuple[FloatNDArray, float, NDArray[np.float64], None | FloatNDArray]:
-        """See _Optimizer.run. Implements alternating Newton and gradient steps."""
+    ) -> Tuple[FloatNDArray, float, FloatNDArray, FloatNDArray]:
+        """Run alternating Newton-GD optimization routine with initial point x0.
+        
+        Parameters
+        ----------
+        x0 : ArrayLike
+            Initial point for optimization.
+
+        Returns
+        -------
+        x_opt : FloatNDArray
+            Optimal point found by the optimizer.
+        f_opt : float
+            Function value at the optimal point.
+        grad_opt : FloatNDArray
+            Gradient of the objective function at the optimal point.
+        hess_opt : FloatNDArray
+            Hessian of the objective function at the optimal point.
+        """
         x0_arr = np.asarray(x0, dtype=np.float64)
         self.opt_x = x0_arr.copy()
         self.ndof = x0_arr.size
