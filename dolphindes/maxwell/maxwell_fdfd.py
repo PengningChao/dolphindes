@@ -11,14 +11,10 @@ one for the Green's function.
 
 __all__ = ["TM_FDFD"]
 
-from typing import TypeAlias
-
 import numpy as np
 import scipy.sparse as sp
-from numpy.typing import NDArray
 
-ComplexGrid: TypeAlias = NDArray[np.complexfloating]
-BoolGrid: TypeAlias = NDArray[np.bool_]
+from dolphindes.types import BoolGrid, ComplexGrid
 
 
 class Maxwell_FDFD:

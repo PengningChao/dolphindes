@@ -18,6 +18,8 @@ photonics
     Photonic dual optimization interface
 maxwell
     Maxwell solver
+util
+    Utilities
 """
 
 __version__ = "0.1.0"
