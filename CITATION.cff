@@ -4,12 +4,11 @@ authors:
   - family-names: "Amaolo"
     given-names: "Alessio"
     orcid: "https://orcid.org/0000-0002-9973-6872"
-    name-suffix: "†"
+    roles: ["author", "equal-contributor"]
   - family-names: "Chao"
     given-names: "Pengning"
     orcid: "https://orcid.org/0000-0001-9287-9515"
-    name-suffix: "†"
+    roles: ["author", "equal-contributor"]
 title: "Dolphindes"
 version: 1.0.0
 url: "https://github.com/PengningChao/dolphindes"
-notes: "† These authors contributed equally to this work."
