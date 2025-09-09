@@ -10,7 +10,7 @@ from pathlib import Path
 @pytest.fixture
 def data_dir():
     """Return the path to the reference data directory."""
-    return Path(os.path.dirname(__file__)) / "reference_arrays" / "qcqp_example" / "sparse"
+    return Path(os.path.dirname(__file__)) / "reference_arrays" / "qcqp_example" / "sparse"  # noqa: E501
 
 
 @pytest.fixture(params=['global', 'local'])
@@ -20,16 +20,24 @@ def sparse_qcqp_data(data_dir, request):
     print(f"\nLoading data for: {added_str} constraints")
     data_path = data_dir / added_str
     lags = np.load(data_path / 'ldos_sparse_lags.npy', allow_pickle=True)
-    lags_optimal = np.load(data_path / 'ldos_sparse_lags_optimal.npy', allow_pickle=True)
+    lags_optimal = np.load(
+        data_path / 'ldos_sparse_lags_optimal.npy', allow_pickle=True
+    )
     A0 = sp.csc_array(sp.load_npz(data_path / 'ldos_sparse_A0.npz'))
     A1 = sp.csc_array(sp.load_npz(data_path / 'ldos_sparse_A1.npz'))
     A2 = sp.csc_array(sp.load_npz(data_path / 'ldos_sparse_A2.npz'))
     s0 = np.load(data_path / 'ldos_sparse_s0.npy', allow_pickle=True)
     s1 = np.load(data_path / 'ldos_sparse_s1.npy', allow_pickle=True)
-    projections_diags = np.load(data_path / 'ldos_some_projections.npy', allow_pickle=True)
+    projections_diags = np.load(
+        data_path / 'ldos_some_projections.npy', 
+        allow_pickle=True
+    )
     # Interleave projections_diags and projections_diags * -1j
     projections_diags = np.asarray(projections_diags)
-    interleaved = np.empty((2 * projections_diags.shape[0], projections_diags.shape[1]), dtype=complex)
+    interleaved = np.empty(
+        (2 * projections_diags.shape[0], projections_diags.shape[1]),
+        dtype=complex
+    )
     interleaved[0::2] = projections_diags
     interleaved[1::2] = projections_diags * -1j
     projections_diags = interleaved
@@ -37,7 +45,9 @@ def sparse_qcqp_data(data_dir, request):
 
     c = np.load(data_path / 'ldos_dualconst.npy', allow_pickle=True)
     
-    sparse_ldos_qcqp_instance = SparseSharedProjQCQP(A0, s0, c, A1, A2, s1, Pdiags, verbose=0)
+    sparse_ldos_qcqp_instance = SparseSharedProjQCQP(
+        A0, s0, c, A1, A2, s1, Pdiags, verbose=0
+    )
     
     return {
         "qcqp": sparse_ldos_qcqp_instance,
@@ -97,7 +107,7 @@ def dense_qcqp_data(data_dir_dense, request):
 
 @pytest.fixture(scope="module")
 def dual_results():
-    """Fixture to store dual optimization results for comparison"""
+    """Fixture to store dual optimization results for comparison."""
     return {}
 
 
@@ -105,8 +115,10 @@ class TestQCQP:
     @pytest.mark.dependency(name="sparse_test")
     def test_sparse_qcqp(self, sparse_qcqp_data, dual_results):
         """ 
-        Test QCQP optimization with BFGS, and compare with optimized lags and results. This doesn't combine Lags into projectors, so gradients and penalties should be the same 
-        as known cases. 
+        Test QCQP optimization with BFGS, and compare with optimized lags and results. 
+        
+        This doesn't combine Lags into projectors, so gradients and penalties should be 
+        the same as known cases. 
         """
         sparse_ldos_qcqp = sparse_qcqp_data["qcqp"]
         lags = sparse_qcqp_data["lags"]
@@ -126,7 +138,7 @@ class TestQCQP:
 
         print("Testing totalS = known total S")
         ref_totals = np.load(data / 'ldos_sparse_total_s.npy', allow_pickle=True)
-        calc_totals = sparse_ldos_qcqp._get_total_S(combined_projector)
+        calc_totals = sparse_ldos_qcqp._get_total_S(combined_projector, np.array([]))
         assert calc_totals.shape == ref_totals.shape, "Shape of calculated total S does not match reference."
         assert np.allclose(calc_totals, ref_totals), "Calculated total S does not match reference total S."
 
@@ -192,11 +204,11 @@ class TestQCQP:
         print(results)
 
         print("Testing the merging of constraints")
-        from dolphindes.cvxopt import merge_lead_constraints
+        from dolphindes.cvxopt import gcd
         sparse_ldos_qcqp.compute_precomputed_values()
         dual_opt, dual_grad, dual_hess, _ = sparse_ldos_qcqp.get_dual(sparse_ldos_qcqp.current_lags, get_grad=True, get_hess=True)
         
-        merge_lead_constraints(sparse_ldos_qcqp, 5)
+        gcd.merge_lead_constraints(sparse_ldos_qcqp, 5)
         merged_dual, merged_grad, merged_hess, _ = sparse_ldos_qcqp.get_dual(sparse_ldos_qcqp.current_lags, get_grad=True, get_hess=True)
         assert np.allclose(dual_opt, merged_dual, atol=1e-2) , "dual value changed after constraint merge."
         assert np.allclose(dual_grad[-5:], merged_grad[-5:], atol=1e-2), "dual grad changed after constraint merge."
@@ -224,7 +236,7 @@ class TestQCQP:
 
         print("Testing totalS = known total S")
         ref_totals = np.load(data / 'ldos_dense_total_s.npy', allow_pickle=True)
-        calc_totals = dense_ldos_qcqp._get_total_S(combined_projector)
+        calc_totals = dense_ldos_qcqp._get_total_S(combined_projector, np.array([]))
         assert calc_totals.shape == ref_totals.shape, "Shape of calculated total S does not match reference."
         assert np.allclose(calc_totals, ref_totals, atol=1e-12, rtol=1e-12), "Calculated total S does not match reference total S."
 

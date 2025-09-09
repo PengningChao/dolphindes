@@ -96,18 +96,19 @@ class _SharedProjQCQP(ABC):
         A2: ArrayLike | sp.csc_array,
         s1: ArrayLike,
         Pdiags: ArrayLike,
-        B_j: list[ArrayLike | sp.csc_array] | None,
-        s_2j: list[ArrayLike] | None,
-        c_2j: ArrayLike | None,
+        B_j: list[ArrayLike | sp.csc_array] | None = None,
+        s_2j: list[ArrayLike] | None = None,
+        c_2j: ArrayLike | None = None,
         verbose: int = 0,
     ) -> None:
         if B_j is None:
-            all_mat_sp = [sp.issparse(A0), sp.issparse(A1), sp.issparse(A2)]
+            all_mat_sp = [sp.issparse(A0), sp.issparse(A1)]
         else:
             all_mat_sp = (
                 [sp.issparse(Bj) for Bj in B_j]
-                + [sp.issparse(A0), sp.issparse(A1), sp.issparse(A2)]
+                + [sp.issparse(A0), sp.issparse(A1)]
             )
+        # A2 may be sparse even if using dense formulation
         all_sparse = np.all(all_mat_sp)
         all_dense = not np.any(all_mat_sp)
         assert (
@@ -117,7 +118,6 @@ class _SharedProjQCQP(ABC):
         if all_sparse:
             self.A0 = sp.csc_array(A0)
             self.A1 = sp.csc_array(A1)
-            self.A2 = sp.csc_array(A2)
             if B_j is None:
                 self.B_j = []
             else:
@@ -125,11 +125,15 @@ class _SharedProjQCQP(ABC):
         elif all_dense:
             self.A0 = np.asarray(A0, dtype=complex)
             self.A1 = np.asarray(A1, dtype=complex)
-            self.A2 = np.asarray(A2, dtype=complex)
             if B_j is None:
                 self.B_j = []
             else:
                 self.B_j = [np.asarray(Bj, dtype=complex) for Bj in B_j]
+
+        if sp.issparse(A2):
+            self.A2 = sp.csc_array(A2)
+        else:
+            self.A2 = np.asarray(A2, dtype=complex)
 
         # Cast vectors to ComplexArray
         self.s0 = np.asarray(s0, dtype=complex)
