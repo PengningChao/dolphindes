@@ -127,7 +127,7 @@ class Photonics_TM_FDFD(Photonics_FDFD):
             check_attributes(self, 'omega', 'chi', 'Nx', 'Ny', 'Npmlx', 'Npmly', 'des_mask', 'bloch_x', 'bloch_y', 'dl', 'sparseQCQP')
             self.setup_EM_solver()
             self.setup_EM_operators()
-            
+            +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         except AttributeError as e:
             warnings.warn("Photonics_TM_FDFD initialized with missing attributes (lazy initialization). We strongly recommend passing all arguments for expected behavior.")
 
@@ -280,9 +280,9 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         """
         self.ei = ei 
         
-    def setup_QCQP(self, Pdiags="global", verbose: float = 0):
+    def setup_QCQP(self, Pdiags: str = "global", verbose: float = 0) -> None:
         """
-        Setup the quadratically constrained quadratic programming (QCQP) problem.
+        Set up the quadratically constrained quadratic programming (QCQP) problem.
         
         Parameters
         ----------
@@ -306,7 +306,8 @@ class Photonics_TM_FDFD(Photonics_FDFD):
         """
         check_attributes(self, 'des_mask', 'A0', 's0', 'c0')
         
-        self.Ndes = int(np.sum(self.des_mask)) # number of field degrees of freedom / pixels in design region
+        # number of field degrees of freedom / pixels in design region
+        self.Ndes = int(np.sum(self.des_mask)) 
         
         # generate initial field
         if (self.ji is None) and (self.ei is None):

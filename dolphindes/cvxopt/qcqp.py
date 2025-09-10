@@ -20,16 +20,12 @@ from typing import (
 import numpy as np
 import scipy.linalg as la
 import scipy.sparse as sp
-import scipy.sparse.linalg as spla
 import sksparse.cholmod
 from numpy.typing import ArrayLike
 
-import dolphindes.cvxopt.gcd as gcd
 from dolphindes.types import ComplexArray, FloatNDArray
-from dolphindes.util import Sym
 
 from ._base_qcqp import _SharedProjQCQP
-from .optimization import BFGS, Alt_Newton_GD, _Optimizer
 
 
 class SparseSharedProjQCQP(_SharedProjQCQP):
